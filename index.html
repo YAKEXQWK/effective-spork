@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escape Room Misterioso - Versión Final Optimizada</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --text-color: #e94560;
+            --accent-color: #0f3460;
+            --box-bg: #16213e;
+            --success-color: #2ecc71;
+            --lock-color: #f1c40f;
+            --font-main: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: white;
+            font-family: var(--font-main);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            user-select: none;
+        }
+
+        h1, h2 { margin: 10px 0; text-align: center; }
+
+        .screen {
+            display: none;
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+
+        .active-screen { display: flex; flex-direction: column; align-items: center; }
+
+        /* MENÚ PRINCIPAL */
+        #header-menu {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            font-size: 3em;
+            margin-bottom: 5px;
+        }
+
+        #inventario-llave {
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        #inventario-llave:hover { transform: scale(1.2); }
+        .oculto { display: none !important; }
+
+        .grid-juegos {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .contenedor-slot {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .etiqueta-codigo-menu {
+            font-size: 0.75em;
+            color: var(--success-color);
+            font-weight: bold;
+            height: 18px;
+            margin-bottom: 2px;
+        }
+
+        .cuadro-juego {
+            background-color: var(--box-bg);
+            border: 2px solid var(--accent-color);
+            padding: 10px 5px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+            position: relative;
+            font-size: 1.6em;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 65px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .cuadro-juego:hover:not(.bloqueado) {
+            background-color: #1f2f55;
+            transform: scale(1.03);
+        }
+
+        .cuadro-juego.bloqueado {
+            background-color: #2c3e50;
+            border-color: #7f8c8d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .cuadro-juego::after {
+            content: '🔒';
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            font-size: 0.45em;
+            color: var(--lock-color);
+        }
+
+        .cuadro-juego.desbloqueado::after { content: ''; }
+
+        .num-juego {
+            font-size: 0.35em;
+            position: absolute;
+            bottom: 2px;
+            left: 5px;
+            color: #7f8c8d;
+        }
+
+        .zona-inferior {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        #salida-puerta { font-size: 3.5em; cursor: pointer; }
+
+        #telefono-panel {
+            background-color: #2c3e50;
+            border: 2px solid #34495e;
+            padding: 8px;
+            border-radius: 12px;
+            width: 110px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        #telefono-pantalla {
+            background: #000;
+            color: #0f0;
+            font-family: monospace;
+            height: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 4px;
+            font-size: 1.1em;
+        }
+
+        .tele-teclado {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 3px;
+        }
+
+        .tele-btn {
+            background: #34495e;
+            border: none;
+            color: white;
+            padding: 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .tele-btn:active { background: #7f8c8d; }
+        .tele-btn.ok { background: var(--success-color); grid-column: span 2; }
+        .tele-btn.borrar { background: var(--text-color); }
+
+        /* BURBUJA DE MENSAJE */
+        .burbuja {
+            position: fixed;
+            bottom: 15px;
+            background: white;
+            color: black;
+            padding: 12px;
+            border-radius: 15px;
+            border: 2px solid black;
+            max-width: 280px;
+            display: none;
+            z-index: 1000;
+            font-size: 0.9em;
+            text-align: center;
+        }
+
+        /* PANELES DE MINIJUEGOS */
+        .minijuego-panel {
+            background: rgba(0,0,0,0.96);
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 500;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .mg-btn-salir { background: var(--text-color); margin-top: 15px; padding: 8px 20px; border-radius: 5px; border:none; color:white; cursor:pointer;}
+
+        /* Estilos minijuegos */
+        .color-circulo { width: 50px; height: 50px; border-radius: 50%; border: 3px solid #fff; cursor: pointer; }
+        [data-color='blue'] { background: #3498db; }
+        [data-color='yellow'] { background: #f1c40f; }
+        [data-color='red'] { background: #e74c3c; }
+        [data-color='green'] { background: #2ecc71; }
+        [data-color='orange'] { background: #e67e22; }
+
+        /* ACUARIO */
+        #acuario-caja {
+            position: relative;
+            width: 320px;
+            height: 220px;
+            background: #0d1b2a;
+            border: 2px solid #1b4965;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .pez-flotante {
+            position: absolute;
+            font-size: 1.8em;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .pez-flotante:hover { transform: scale(1.3); }
+
+        /* ZONA DE GLOBOS ANIMADOS CIRCO */
+        #arena-globos {
+            position: relative;
+            width: 320px;
+            height: 200px;
+            background: #111;
+            border: 2px solid #333;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .globo-subiendo {
+            position: absolute;
+            font-size: 2.2em;
+            cursor: pointer;
+            animation: subirGlobo 3s linear infinite;
+        }
+        @keyframes subirGlobo {
+            0% { transform: translateY(210px); }
+            100% { transform: translateY(-40px); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- MENÚ PRINCIPAL -->
+    <div id="pantalla-menu" class="screen active-screen">
+        <div id="header-menu">
+            <span>🚪</span>
+            <div id="div-candado">🔒</div>
+            <div id="inventario-llave" class="oculto" onclick="mostrarVictoriaFinal()" title="Usar Llave">🔑</div>
+        </div>
+        
+        <h2>ESCAPE ROOM</h2>
+        
+        <div class="grid-juegos">
+            <!-- Juego 1 -->
+            <div class="contenedor-slot">
+                <div class="etiqueta-codigo-menu" id="lbl-c1"></div>
+                <div class="cuadro-juego desbloqueado" id="btn-juego-1" onclick="abrirMinijuego(1)"><span class="emoji-juego">🌈</span><span class="num-juego">1</span></div>
+            </div>
+            <!-- Juego 2 -->
+            <div class="contenedor-slot">
+                <div class="etiqueta-codigo-menu" id="lbl-c2"></div>
+                <div class="cuadro-juego desbloqueado" id="btn-juego-2" onclick="abrirMinijuego(2)"><span class="emoji-juego">💡</span><span class="num-juego">2</span></div>
+            </div>
+            <!-- Juego 3 -->
+            <div class="contenedor-slot">
+                <div class="etiqueta-codigo-menu" id="lbl-c3"></div>
+                <div class="cuadro-juego desbloqueado" id="btn-juego-3" onclick="abrirMinijuego(3)"><span class="emoji-juego">🐟</span><span class="num-juego">3</span></div>
+            </div>
+            <!-- Juego 4 -->
+            <div class="contenedor-slot">
+                <div class="etiqueta-codigo-menu" id="lbl-c4"></div>
+                <div class="cuadro-juego bloqueado" id="btn-juego-4" onclick="abrirMinijuego(4)"><span class="emoji-juego">🐕</span><span class="num-juego">4</span></div>
+            </div>
+            <!-- Juego 5 -->
+            <div class="contenedor-slot">
+                <div class="etiqueta-codigo-menu" id="lbl-c5"></div>
+                <div class="cuadro-juego bloqueado" id="btn-juego-5" onclick="abrirMinijuego(5)"><span class="emoji-juego">🎈</span><span class="num-juego">5</span></div>
+            </div>
+            <!-- Juego 6 -->
+            <div class="contenedor-slot">
+                <div class="etiqueta-codigo-menu" id="lbl-c6"></div>
+                <div class="cuadro-juego bloqueado" id="btn-juego-6" onclick="abrirMinijuego(6)"><span class="emoji-juego">🎪</span><span class="num-juego">6</span></div>
+            </div>
+        </div>
+
+        <div class="zona-inferior">
+            <div id="salida-puerta" onclick="tocarPuertaSalida()">🚪</div>
+            <div id="telefono-panel">
+                <div id="telefono-pantalla">----</div>
+                <div class="tele-teclado">
+                    <button class="tele-btn" onclick="teleTipear('1')">1</button>
+                    <button class="tele-btn" onclick="teleTipear('2')">2</button>
+                    <button class="tele-btn" onclick="teleTipear('3')">3</button>
+                    <button class="tele-btn" onclick="teleTipear('4')">4</button>
+                    <button class="tele-btn" onclick="teleTipear('5')">5</button>
+                    <button class="tele-btn" onclick="teleTipear('6')">6</button>
+                    <button class="tele-btn" onclick="teleTipear('7')">7</button>
+                    <button class="tele-btn" onclick="teleTipear('8')">8</button>
+                    <button class="tele-btn" onclick="teleTipear('9')">9</button>
+                    <button class="tele-btn borrar" onclick="teleTipear('BORRAR')">⌫</button>
+                    <button class="tele-btn" onclick="teleTipear('0')">0</button>
+                    <button class="tele-btn ok" onclick="teleTipear('OK')">OK</button>
+                </div>
+            </div>
+        </div>
+        <div style="margin-top: 10px; font-size: 0.8em; color: #a5b1c2;" id="contador-tickets-menu">🎟️ Tickets: 0</div>
+    </div>
+
+    <!-- BURBUJA DE MENSAJES -->
+    <div class="burbuja" id="burbuja-mensaje"></div>
+
+    <!-- MINIJUEGO 1: MEMORIA DE COLORES -->
+    <div id="mg-1" class="minijuego-panel">
+        <h3>🌈 Memoria de Colores</h3>
+        <div id="mg1-estado" style="font-size: 1.2em; margin-bottom: 10px;">Fase: 1/15</div>
+        <div id="mg1-pantalla" style="background:#16213e; border:2px solid #0f3460; width:220px; height:70px; display:flex; align-items:center; justify-content:center; font-size:2.5em; border-radius:8px; margin-bottom:20px;">Observa</div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+            <div class="color-circulo" data-color="blue" onclick="mg1Tocar('blue')"></div>
+            <div class="color-circulo" data-color="yellow" onclick="mg1Tocar('yellow')"></div>
+            <div class="color-circulo" data-color="red" onclick="mg1Tocar('red')"></div>
+            <div class="color-circulo" data-color="green" onclick="mg1Tocar('green')"></div>
+            <div class="color-circulo" data-color="orange" onclick="mg1Tocar('orange')"></div>
+        </div>
+        <button class="mg-btn-salir" onclick="cerrarMinijuegos()">Salir</button>
+    </div>
+
+    <!-- MINIJUEGO 2: ELECTRICIDAD -->
+    <div id="mg-2" class="minijuego-panel">
+        <h3>💡 Conexión de Corriente</h3>
+        <p style="font-size: 0.85em;">Conexiones exitosas: <b id="mg2-progreso">0</b>/10</p>
+        <div style="background:#16213e; padding:15px; border-radius:8px; margin:10px 0; width: 280px; text-align:center;">
+            <p id="mg2-estado-txt" style="font-size: 0.9em; margin-bottom: 15px;">🔋 [ Batería ] ── ⚡ ── [ 💡 Foco ]</p>
+            <button class="tele-btn" style="padding:12px; background:#2ecc71; width:100%; font-size:1.1em;" onclick="mg2ConectarLinea()">⚡ ¡Conectar Línea Recta!</button>
+        </div>
+        <button class="mg-btn-salir" onclick="cerrarMinijuegos()">Salir</button>
+    </div>
+
+    <!-- MINIJUEGO 3: PECES -->
+    <div id="mg-3" class="minijuego-panel">
+        <h3>🐟 Acuario en Movimiento</h3>
+        <p style="font-size: 0.85em;">¡Atrapa 15 peces!</p>
+        <div style="font-size: 1.1em; margin-bottom: 5px;">Atrapados: <b id="p-contador">0</b>/15</div>
+        <div id="acuario-caja"></div>
+        <button class="mg-btn-salir" onclick="cerrarMinijuegos()">Salir</button>
+    </div>
+
+    <!-- MINIJUEGO 4: MASCOTA -->
+    <div id="mg-4" class="minijuego-panel">
+        <h3>🐕 Cuidar a la Mascota</h3>
+        <p id="mg4-pet-text" style="font-size: 1em; color: var(--lock-color);">¡El perro tiene hambre!</p>
+        <p style="font-size: 0.85em;">Necesidades cumplidas: <b id="mg4-contador">0</b>/20</p>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 15px 0;">
+            <button class="tele-btn" style="font-size: 1.5em; padding: 12px;" onclick="mg4Accion('🥩')">🥩</button>
+            <button class="tele-btn" style="font-size: 1.5em; padding: 12px;" onclick="mg4Accion('🥤')">🥤</button>
+            <button class="tele-btn" style="font-size: 1.5em; padding: 12px;" onclick="mg4Accion('⚽')">⚽</button>
+            <button class="tele-btn" style="font-size: 1.5em; padding: 12px;" onclick="mg4Accion('🧶')">🧶</button>
+            <button class="tele-btn" style="font-size: 1.5em; padding: 12px;" onclick="mg4Accion('🛁')">🛁</button>
+            <button class="tele-btn" style="font-size: 1.5em; padding: 12px;" onclick="mg4Accion('🛌')">🛌</button>
+        </div>
+        <button class="mg-btn-salir" onclick="cerrarMinijuegos()">Salir</button>
+    </div>
+
+    <!-- MINIJUEGO 5: GLOBOS -->
+    <div id="mg-5" class="minijuego-panel">
+        <h3>🎈 Fiesta de Globos</h3>
+        <p style="font-size: 0.85em;">¡Infla 45 globos (5 toques cada uno)!</p>
+        <div style="font-size: 1.2em; margin: 10px 0;">Globos: <b id="mg5-globos">0</b>/45 | Toques: <span id="mg5-toques">0</span>/225</div>
+        <button onclick="mg5Inflar()" style="font-size: 3em; background: #e74c3c; border: none; border-radius: 50%; width: 100px; height: 100px; cursor: pointer; box-shadow: 0 0 15px red; margin: 10px 0;">🎈</button>
+        <button class="mg-btn-salir" onclick="cerrarMinijuegos()">Salir</button>
+    </div>
+
+    <!-- MINIJUEGO 6: CIRCO Y RULETA -->
+    <div id="mg-6" class="minijuego-panel">
+        <h3>🎪 Gran Circo Misterioso</h3>
+        <div style="font-size: 0.9em; margin-bottom: 5px;">🎟️ Tickets disponibles: <b id="circo-tickets">0</b></div>
+        <div style="background: #16213e; padding: 10px; border-radius: 8px; width: 90%; margin-bottom: 10px;">
+            <p style="font-size: 0.85em; margin: 5px 0;">🎡 Ruleta de Códigos (1% de acierto)</p>
+            <button class="tele-btn" style="background:#f1c40f; color:black; font-weight:bold; padding:8px 15px;" onclick="girarRuleta()">Girar Ruleta (1 🎟️)</button>
+            <p id="ruleta-resultado" style="font-size: 0.8em; margin-top: 5px; color:#a5b1c2;">Inserta tickets para probar suerte.</p>
+        </div>
+        <div style="font-size: 0.8em; margin-bottom: 5px;">Consigue más tickets jugando:</div>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button class="tele-btn" onclick="iniciarMinijuegoDispararGlobos()">🎯 Explotar Globos (1m)</button>
+            <button class="tele-btn" onclick="iniciarMinijuegoTopos()">🔨 Atrapar Topos (1m)</button>
+        </div>
+        <button class="mg-btn-salir" onclick="cerrarMinijuegos()">Salir</button>
+    </div>
+
+    <!-- SUB-MINIJUEGO CIRCO: GLOBOS SUBIENDO -->
+    <div id="sub-mg-disparar" class="minijuego-panel">
+        <h3>🎯 Explotar Globos</h3>
+        <p style="font-size: 0.85em;">¡Toca los globos que suben! Cada 4 globos = 1 🎟️</p>
+        <div style="font-size: 1.1em;">Tiempo: <b id="sub-disp-tiempo">60</b>s | Explotados: <b id="sub-disp-rotos">0</b></div>
+        <div id="arena-globos"></div>
+        <button class="mg-btn-salir" onclick="cerrarSubCirco('disparar')">Terminar y cobrar tickets</button>
+    </div>
+
+    <!-- SUB-MINIJUEGO CIRCO: TOPOS -->
+    <div id="sub-mg-topos" class="minijuego-panel">
+        <h3>🔨 Atrapar Topos</h3>
+        <p style="font-size: 0.85em;">¡Atrapa topos! Cada 4 topos = 1 🎟️</p>
+        <div style="font-size: 1.1em;">Tiempo: <b id="sub-topo-tiempo">60</b>s | Atrapados: <b id="sub-topo-contador">0</b></div>
+        <button onclick="subTopotocar()" style="font-size: 2.5em; padding: 15px; background:#e67e22; border:none; border-radius:10px; margin: 20px auto; cursor:pointer;">🐹 ¡Atrapar topo!</button>
+        <button class="mg-btn-salir" onclick="cerrarSubCirco('topos')">Terminar y cobrar tickets</button>
+    </div>
+
+    <script>
+        // --- ESTADO GLOBAL ---
+        let estadosJuegos = { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false };
+        let codigosJuegos = { 1: '8', 2: '2', 3: '5', 4: '729', 5: '908972201', 6: '980726' };
+        let tieneLlave = false;
+        let ticketsCirco = 0;
+        let codigosCircoEncontrados = { c1: false, c2: false };
+        let codigoInput = "";
+        let timerRef = null;
+        let perroTimerRef = null;
+
+        function mostrarBurbuja(texto, duracion = 3500) {
+            const burbuja = document.getElementById('burbuja-mensaje');
+            burbuja.innerText = texto;
+            burbuja.style.display = 'block';
+            setTimeout(() => { burbuja.style.display = 'none'; }, duracion);
+        }
+
+        function cerrarMinijuegos() {
+            document.querySelectorAll('.minijuego-panel').forEach(p => p.style.display = 'none');
+            if (timerRef) clearInterval(timerRef);
+            if (window.pecesInterval) clearInterval(window.pecesInterval);
+            if (perroTimerRef) clearInterval(perroTimerRef);
+        }
+
+        function abrirMinijuego(num) {
+            if (num > 3 && !estadosJuegos[num]) {
+                mostrarBurbuja("Este desafío está bloqueado. Usa el teléfono con el código correcto.");
+                return;
+            }
+            document.querySelectorAll('.minijuego-panel').forEach(p => p.style.display = 'none');
+            if (window.pecesInterval) clearInterval(window.pecesInterval);
+            if (perroTimerRef) clearInterval(perroTimerRef);
+
+            document.getElementById(`mg-${num}`).style.display = 'flex';
+            
+            if (num === 1) iniciarMG1();
+            if (num === 2) iniciarMG2();
+            if (num === 3) iniciarMG3();
+            if (num === 4) iniciarMG4();
+            if (num === 5) iniciarMG5();
+            if (num === 6) actualizarInfoCirco();
+        }
+
+        function marcarCompletado(num) {
+            estadosJuegos[num] = true;
+            document.getElementById(`btn-juego-${num}`).style.background = 'var(--success-color)';
+            document.getElementById(`lbl-c${num}`).innerText = `Código: ${codigosJuegos[num]}`;
+            cerrarMinijuegos();
+        }
+
+        // --- TELÉFONO ---
+        const pantallaTelefono = document.getElementById('telefono-pantalla');
+        function teleTipear(tecla) {
+            if (tecla === 'OK') {
+                verificarCodigoTelefono();
+            } else if (tecla === 'BORRAR') {
+                codigoInput = "";
+            } else {
+                if (codigoInput.length < 12) codigoInput += tecla;
+            }
+            pantallaTelefono.innerText = codigoInput.padStart(4, '-');
+        }
+
+        function verificarCodigoTelefono() {
+            if (codigoInput === "825") {
+                desbloquearNivel(4);
+                mostrarBurbuja("¡Cuarto juego desbloqueado!");
+            } else if (codigoInput === "729") {
+                desbloquearNivel(5);
+                mostrarBurbuja("¡Quinto juego desbloqueado!");
+            } else if (codigoInput === "908972201") {
+                desbloquearNivel(6);
+                mostrarBurbuja("¡Circo desbloqueado!");
+            } else if (codigoInput === "980726") {
+                tieneLlave = true;
+                document.getElementById('inventario-llave').classList.remove('oculto');
+                mostrarBurbuja("¡Llave Maestra obtenida arriba en el menú! (🔑)");
+            } else {
+                mostrarBurbuja("Código incorrecto.");
+            }
+            codigoInput = "";
+            pantallaTelefono.innerText = "----";
+        }
+
+        function desbloquearNivel(num) {
+            estadosJuegos[num] = true;
+            const cuadro = document.getElementById(`btn-juego-${num}`);
+            cuadro.classList.remove('bloqueado');
+            cuadro.classList.add('desbloqueado');
+        }
+
+        function tocarPuertaSalida() {
+            if (tieneLlave) {
+                mostrarVictoriaFinal();
+            } else {
+                mostrarBurbuja("La puerta está cerrada (🗨️)");
+            }
+        }
+
+        function mostrarVictoriaFinal() {
+            document.getElementById('div-candado').innerText = '🔓';
+            mostrarBurbuja("¡Felicidades! Has completado todas las pruebas y ganado tu bonus de caramelo x1! 🍬", 7000);
+        }
+
+        // --- MINIJUEGO 1 ---
+        let mg1Fase = 0;
+        let mg1Paso = 0;
+        let mg1Bloqueo = true;
+        const emojisColores = { 'blue':'🔵', 'yellow':'🟡', 'red':'🔴', 'green':'🟢', 'orange':'🟠' };
+        const masterSecuencia = [
+            ['blue'], ['blue'], ['blue', 'yellow'], ['blue', 'yellow', 'red'],
+            ['blue', 'yellow', 'red', 'green'], ['blue', 'yellow', 'red', 'green', 'yellow'],
+            ['blue', 'yellow', 'red', 'green', 'yellow', 'blue'], ['blue', 'yellow', 'red', 'green', 'yellow', 'blue', 'orange'],
+            ['blue', 'yellow', 'red', 'green', 'yellow', 'blue', 'orange', 'orange'], ['blue', 'yellow', 'red', 'green', 'yellow', 'blue', 'orange', 'orange', 'orange'],
+            ['blue', 'yellow', 'red', 'green', 'yellow', 'blue', 'orange', 'orange', 'orange', 'red'], ['blue', 'yellow', 'red', 'green', 'yellow', 'blue', 'orange', 'orange', 'orange', 'red', 'green'],
+            ['blue', 'yellow', 'red', 'green', 'yellow', 'blue', 'orange', 'orange', 'orange', 'red', 'green', 'blue'], ['blue', 'yellow', 'red', 'green', 'yellow', 'blue', 'orange', 'orange', 'orange', 'red', 'green', 'blue', 'orange'],
+            ['blue', 'yellow', 'red', 'green', 'yellow', 'blue', 'orange', 'orange', 'orange', 'red', 'green', 'blue', 'orange', 'green']
+        ];
+
+        function iniciarMG1() {
+            if (estadosJuegos[1]) return;
+            mg1Fase = 0;
+            mg1SiguienteFase();
+        }
+
+        function mg1SiguienteFase() {
+            mg1Paso = 0;
+            mg1Bloqueo = true;
+            document.getElementById('mg1-estado').innerText = `Fase: ${mg1Fase + 1}/15`;
+            let seq = masterSecuencia[mg1Fase];
+            let i = 0;
+            let interval = setInterval(() => {
+                document.getElementById('mg1-pantalla').innerHTML = emojisColores[seq[i]];
+                i++;
+                if (i >= seq.length) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        document.getElementById('mg1-pantalla').innerHTML = "¡Tú turno!";
+                        mg1Bloqueo = false;
+                    }, 600);
+                }
+            }, 700);
+        }
+
+        function mg1Tocar(col) {
+            if (mg1Bloqueo) return;
+            let seq = masterSecuencia[mg1Fase];
+            if (col === seq[mg1Paso]) {
+                mg1Paso++;
+                if (mg1Paso === seq.length) {
+                    mg1Fase++;
+                    if (mg1Fase < 15) {
+                        document.getElementById('mg1-pantalla').innerHTML = "✅ ¡Bien!";
+                        mg1Bloqueo = true;
+                        setTimeout(mg1SiguienteFase, 1000);
+                    } else {
+                        marcarCompletado(1);
+                        mostrarBurbuja("¡Memoria completada! Código: 8");
+                    }
+                }
+            } else {
+                document.getElementById('mg1-pantalla').innerHTML = "❌ ¡Error!";
+                mg1Bloqueo = true;
+                setTimeout(iniciarMG1, 1000);
+            }
+        }
+
+        // --- MINIJUEGO 2 ---
+        let mg2Progreso = 0;
+        function iniciarMG2() {
+            if (estadosJuegos[2]) return;
+            mg2Progreso = 0;
+            document.getElementById('mg2-progreso').innerText = mg2Progreso;
+            document.getElementById('mg2-estado-txt').innerHTML = "🔋 [ Batería ] ── ⚡ ── [ 💡 Foco ]";
+        }
+        function mg2ConectarLinea() {
+            if (estadosJuegos[2]) return;
+            mg2Progreso++;
+            document.getElementById('mg2-progreso').innerText = mg2Progreso;
+            document.getElementById('mg2-estado-txt').innerHTML = "⚡ ¡ENERGÍA FLUJENDO! ⚡";
+            setTimeout(() => {
+                if(!estadosJuegos[2]) {
+                    document.getElementById('mg2-estado-txt').innerHTML = "🔋 [ Batería ] ── ⚡ ── [ 💡 Foco ]";
+                }
+            }, 400);
+
+            if (mg2Progreso >= 10) {
+                marcarCompletado(2);
+                mostrarBurbuja("¡Electricidad conectada! Código: 2");
+            }
+        }
+
+        // --- MINIJUEGO 3 ---
+        let pecesAtrapados = 0;
+        function iniciarMG3() {
+            if (estadosJuegos[3]) return;
+            pecesAtrapados = 0;
+            document.getElementById('p-contador').innerText = pecesAtrapados;
+            generarPecesEnAcuario();
+            window.pecesInterval = setInterval(moverPeces, 1200);
+        }
+
+        function generarPecesEnAcuario() {
+            const acuario = document.getElementById('acuario-caja');
+            acuario.innerHTML = '';
+            const tiposPeces = ['🐟', '🐠', '🐡', '🦈'];
+            
+            for (let i = 0; i < 6; i++) {
+                let pez = document.createElement('div');
+                pez.className = 'pez-flotante';
+                pez.innerText = tiposPeces[Math.floor(Math.random() * tiposPeces.length)];
+                pez.style.left = Math.random() * 260 + 'px';
+                pez.style.top = Math.random() * 160 + 'px';
+                
+                pez.onclick = function() {
+                    if(estadosJuegos[3]) return;
+                    pecesAtrapados++;
+                    document.getElementById('p-contador').innerText = pecesAtrapados;
+                    this.remove();
+
+                    if (pecesAtrapados >= 15) {
+                        marcarCompletado(3);
+                        mostrarBurbuja("¡Acuario completado! Código: 5");
+                    } else {
+                        setTimeout(() => { regenerarPecito(acuario); }, 800);
+                    }
+                };
+                acuario.appendChild(pez);
+            }
+        }
+
+        function regenerarPecito(acuario) {
+            if (estadosJuegos[3]) return;
+            const tiposPeces = ['🐟', '🐠', '🐡', '🦈'];
+            let pez = document.createElement('div');
+            pez.className = 'pez-flotante';
+            pez.innerText = tiposPeces[Math.floor(Math.random() * tiposPeces.length)];
+            pez.style.left = Math.random() * 260 + 'px';
+            pez.style.top = Math.random() * 160 + 'px';
+            pez.onclick = function() {
+                if(estadosJuegos[3]) return;
+                pecesAtrapados++;
+                document.getElementById('p-contador').innerText = pecesAtrapados;
+                this.remove();
+                if (pecesAtrapados >= 15) {
+                    marcarCompletado(3);
+                    mostrarBurbuja("¡Acuario completado! Código: 5");
+                } else {
+                    setTimeout(() => { regenerarPecito(acuario); }, 800);
+                }
+            };
+            acuario.appendChild(pez);
+        }
+
+        function moverPeces() {
+            const peces = document.querySelectorAll('.pez-flotante');
+            peces.forEach(p => {
+                p.style.left = (Math.random() * 260) + 'px';
+                p.style.top = (Math.random() * 160) + 'px';
+            });
+        }
+
+        // --- MINIJUEGO 4 (Perro cambia necesidad cada 4 segundos) ---
+        let necesidadActualIndex = 0;
+        let necesidadesHechas = 0;
+        const necList = [
+            { btn: '🥩', texto: '¡El perro quiere comer!' },
+            { btn: '🥤', texto: '¡El perro quiere tomar agua!' },
+            { btn: '⚽', texto: '¡El perro quiere jugar con la pelota!' },
+            { btn: '🧶', texto: '¡El perro quiere la bola de estambre!' },
+            { btn: '🛁', texto: '¡El perro quiere bañarse!' },
+            { btn: '🛌', texto: '¡El perro quiere dormir!' }
+        ];
+
+        function iniciarMG4() {
+            if (estadosJuegos[4]) return;
+            necesidadesHechas = 0;
+            siguienteNecesidadDog();
+            if (perroTimerRef) clearInterval(perroTimerRef);
+            perroTimerRef = setInterval(siguienteNecesidadDog, 4000); // 4 segundos
+        }
+
+        function siguienteNecesidadDog() {
+            necesidadActualIndex = Math.floor(Math.random() * necList.length);
+            document.getElementById('mg4-pet-text').innerText = necList[necesidadActualIndex].texto;
+            document.getElementById('mg4-contador').innerText = necesidadesHechas;
+        }
+
+        function mg4Accion(emojiBtn) {
+            if (emojiBtn === necList[necesidadActualIndex].btn) {
+                necesidadesHechas++;
+                if (necesidadesHechas >= 20) {
+                    clearInterval(perroTimerRef);
+                    marcarCompletado(4);
+                    mostrarBurbuja("¡Mascota satisfecha! Código: 729");
+                } else {
+                    siguienteNecesidadDog();
+                }
+            } else {
+                mostrarBurbuja("¡Eso no pedía el perro!");
+            }
+        }
+
+        // --- MINIJUEGO 5 ---
+        let globosInf = 0;
+        let toquesTotal = 0;
+        function iniciarMG5() {
+            if (estadosJuegos[5]) return;
+            globosInf = 0;
+            toquesTotal = 0;
+            actualizarGlobosUI();
+        }
+        function mg5Inflar() {
+            if (globosInf < 45) {
+                toquesTotal++;
+                if (toquesTotal % 5 === 0) globosInf++;
+                actualizarGlobosUI();
+                if (globosInf === 45) {
+                    marcarCompletado(5);
+                    mostrarBurbuja("¡Globos inflados! Código: 908972201");
+                }
+            }
+        }
+        function actualizarGlobosUI() {
+            document.getElementById('mg5-globos').innerText = globosInf;
+            document.getElementById('mg5-toques').innerText = toquesTotal;
+        }
+
+        // --- MINIJUEGO 6 & SUB-MINIJUEGOS ---
+        function actualizarInfoCirco() {
+            document.getElementById('circo-tickets').innerText = ticketsCirco;
+            document.getElementById('contador-tickets-menu').innerText = `🎟️ Tickets: ${ticketsCirco}`;
+        }
+
+        function girarRuleta() {
+            if (ticketsCirco > 0) {
+                ticketsCirco--;
+                actualizarInfoCirco();
+                let suerte = Math.random();
+                if (suerte < 0.005 && !codigosCircoEncontrados.c1) {
+                    codigosCircoEncontrados.c1 = true;
+                    document.getElementById('ruleta-resultado').innerHTML = "🎉 ¡Ganaste el 1er código! <b>980</b>";
+                    mostrarBurbuja("¡Primer código del circo: 980!");
+                } else if (suerte >= 0.005 && suerte < 0.01 && !codigosCircoEncontrados.c2) {
+                    codigosCircoEncontrados.c2 = true;
+                    document.getElementById('ruleta-resultado').innerHTML = "🎉 ¡Ganaste el 2do código! <b>726</b>";
+                    mostrarBurbuja("¡Segundo código del circo: 726!");
+                } else {
+                    document.getElementById('ruleta-resultado').innerText = "Vuelve a intentarlo (Nada).";
+                }
+                if(codigosCircoEncontrados.c1 && codigosCircoEncontrados.c2) {
+                    marcarCompletado(6);
+                    mostrarBurbuja("¡Circo completado con éxito!");
+                }
+            } else {
+                mostrarBurbuja("No tienes tickets. Juega en los minijuegos del circo.");
+            }
+        }
+
+        // Sub-minijuego de globos subiendo
+        let subDispRotos = 0;
+        let subDispTiempoRestante = 60;
+        let generadorGlobosRef = null;
+
+        function iniciarMinijuegoDispararGlobos() {
+            document.querySelectorAll('.minijuego-panel').forEach(p => p.style.display = 'none');
+            document.getElementById('sub-mg-disparar').style.display = 'flex';
+            subDispRotos = 0;
+            subDispTiempoRestante = 60;
+            document.getElementById('sub-disp-rotos').innerText = subDispRotos;
+            document.getElementById('sub-disp-tiempo').innerText = subDispTiempoRestante;
+            
+            const arena = document.getElementById('arena-globos');
+            arena.innerHTML = '';
+
+            timerRef = setInterval(() => {
+                subDispTiempoRestante--;
+                document.getElementById('sub-disp-tiempo').innerText = subDispTiempoRestante;
+                if (subDispTiempoRestante <= 0) cerrarSubCirco('disparar');
+            }, 1000);
+
+            // Generar globos con animación
+            generadorGlobosRef = setInterval(() => {
+                if(arena.children.length < 5) {
+                    let g = document.createElement('div');
+                    g.className = 'globo-subiendo';
+                    g.innerText = '🎈';
+                    g.style.left = Math.random() * 270 + 'px';
+                    g.onclick = function() {
+                        subDispRotos++;
+                        document.getElementById('sub-disp-rotos').innerText = subDispRotos;
+                        this.remove();
+                    };
+                    arena.appendChild(g);
+                    setTimeout(() => { if(g.parentElement) g.remove(); }, 3000);
+                }
+            }, 600);
+        }
+
+        // Sub-minijuego de Topos
+        let subTopoAtrapados = 0;
+        let subTopoTiempoRestante = 60;
+        function iniciarMinijuegoTopos() {
+            document.querySelectorAll('.minijuego-panel').forEach(p => p.style.display = 'none');
+            document.getElementById('sub-mg-topos').style.display = 'flex';
+            subTopoAtrapados = 0;
+            subTopoTiempoRestante = 60;
+            document.getElementById('sub-topo-contador').innerText = subTopoAtrapados;
+            document.getElementById('sub-topo-tiempo').innerText = subTopoTiempoRestante;
+            timerRef = setInterval(() => {
+                subTopoTiempoRestante--;
+                document.getElementById('sub-topo-tiempo').innerText = subTopoTiempoRestante;
+                if (subTopoTiempoRestante <= 0) cerrarSubCirco('topos');
+            }, 1000);
+        }
+        function subTopotocar() {
+            subTopoAtrapados++;
+            document.getElementById('sub-topo-contador').innerText = subTopoAtrapados;
+        }
+
+        function cerrarSubCirco(tipo) {
+            clearInterval(timerRef);
+            if (generadorGlobosRef) clearInterval(generadorGlobosRef);
+            let ganados = 0;
+            if (tipo === 'disparar') {
+                ganados = Math.floor(subDispRotos / 4); // Cada 4 globos = 1 ticket
+            } else {
+                ganados = Math.floor(subTopoAtrapados / 4); // Cada 4 topos = 1 ticket
+            }
+            ticketsCirco += ganados;
+            actualizarInfoCirco();
+            mostrarBurbuja(`¡Ganaste ${ganados} tickets!`);
+            abrirMinijuego(6);
+        }
+    </script>
+</body>
+</html>
